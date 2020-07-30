@@ -179,8 +179,8 @@ def createMaterialsForFacadesOverlay(
                     # The wall material (i.e. background) texture,
                     # set it just in case
                     setImage(wallTexturePath, None, nodes, "Wall Material")
-                    nodes["Mapping"].scale[0] = 1./wallTextureWidthM
-                    nodes["Mapping"].scale[1] = 1./wallTextureHeightM
+                    nodes["Mapping"].inputs[3].default_value[0] = 1./wallTextureWidthM
+                    nodes["Mapping"].inputs[3].default_value[1] = 1./wallTextureHeightM
                     # the mask for the emission
                     setImage(fileName, directory, nodes, "Emission Mask", "emissive")
                     # setting nodes
@@ -202,8 +202,8 @@ def createMaterialsForFacadesOverlay(
             if not materialName in bpy.data.materials:
                 nodes = createMaterialFromTemplate(materialTemplate, materialName)
                 setImage(wallTexturePath, None, nodes, "Image Texture")
-                nodes["Mapping"].scale[0] = 1./wallTextureWidthM
-                nodes["Mapping"].scale[1] = 1./wallTextureHeightM
+                nodes["Mapping"].inputs[3].default_value[0] = 1./wallTextureWidthM
+                nodes["Mapping"].inputs[3].default_value[1] = 1./wallTextureHeightM
         else:
             print(
                 ("Information about the image texture \"%s\" isn't available " +
@@ -230,8 +230,8 @@ def createMaterialsForSeamlessTextures(files, directory, materialBaseName, listO
                     nodes = createMaterialFromTemplate(materialTemplate, materialName)
                     
                     setImage(fileName, directory, nodes, "Image Texture")
-                    nodes["Mapping"].scale[0] = 1./textureDataEntry[0]
-                    nodes["Mapping"].scale[1] = 1./textureDataEntry[1]
+                    nodes["Mapping"].inputs[3].default_value[0] = 1./textureDataEntry[0]
+                    nodes["Mapping"].inputs[3].default_value[1] = 1./textureDataEntry[1]
         else:
             print(
                 ("Information about the image texture \"%s\" isn't available " +
@@ -274,7 +274,7 @@ def setCustomNodeValue(node, inputName, value):
 
 
 """
-class OperatorDownloadTextures(bpy.types.Operator):
+class BLOSM_OT_DownloadTextures(bpy.types.Operator):
     bl_idname = "blosm.download_textures"
     bl_label = "download textures"
     bl_description = "Open multiple webbrowser tabs to download textures from textures.com"
@@ -285,7 +285,7 @@ class OperatorDownloadTextures(bpy.types.Operator):
     pauseDuration = 1.
     
     def invoke(self, context, event):
-        for line in bpy.data.texts[context.scene.blender_osm.listOfTextures].lines:
+        for line in bpy.data.texts[context.scene.blosm.listOfTextures].lines:
             name = line.body.split(',')[0]
             index1 = name.find('_')
             if index1 > 0:
@@ -299,7 +299,7 @@ class OperatorDownloadTextures(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class OperatorCreateMaterials(bpy.types.Operator):
+class BLOSM_OT_CreateMaterials(bpy.types.Operator):
     bl_idname = "blosm.create_materials"
     bl_label = "Create materials..."
     bl_description = "Create Blender materials with the selected Python script"
@@ -314,7 +314,7 @@ class OperatorCreateMaterials(bpy.types.Operator):
         return {"RUNNING_MODAL"}
     
     def execute(self, context):
-        addon = context.scene.blender_osm
+        addon = context.scene.blosm
         module = imp.new_module("module")
         exec(
             bpy.data.texts[addon.materialScript].as_string(),
@@ -325,15 +325,15 @@ class OperatorCreateMaterials(bpy.types.Operator):
 """
 
 
-class OperatorCreateMaterials(bpy.types.Operator):
+class BLOSM_OT_CreateMaterials(bpy.types.Operator):
     bl_idname = "blosm.create_materials"
     bl_label = "Create materials..."
     bl_description = "Create Blender materials for the chosen material type"
     bl_options = {"REGISTER", "UNDO"}
     
-    directory = bpy.props.StringProperty(subtype='DIR_PATH')
+    directory: bpy.props.StringProperty(subtype='DIR_PATH')
     
-    files = bpy.props.CollectionProperty(type=bpy.types.OperatorFileListElement)
+    files: bpy.props.CollectionProperty(type=bpy.types.OperatorFileListElement)
     
     def invoke(self, context, event):
         if not bpy.data.is_saved:
@@ -346,7 +346,7 @@ class OperatorCreateMaterials(bpy.types.Operator):
         if not bpy.data.is_saved:
             self.report({'ERROR'}, "Save the Blender file before creating materials!")
             return {'CANCELLED'}
-        addon = context.scene.blender_osm
+        addon = context.scene.blosm
         materialType = addon.materialType
         # <ms> means 'seamless materials'
         if materialType == "ms":
@@ -444,14 +444,14 @@ class OperatorCreateMaterials(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class OperatorDeleteMaterials(bpy.types.Operator):
+class BLOSM_OT_DeleteMaterials(bpy.types.Operator):
     bl_idname = "blosm.delete_materials"
     bl_label = "Delete materials..."
     bl_description = "Delete a family of Blender materials for the chosen OSM material"
     bl_options = {"REGISTER", "UNDO"}
         
     def execute(self, context):
-        addon = context.scene.blender_osm
+        addon = context.scene.blosm
         materialFamily =\
             _materialFamilyFO\
             if addon.materialType=="fo" or addon.materialType=="fs"\
@@ -471,7 +471,7 @@ class OperatorDeleteMaterials(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class PanelMaterialCreate(bpy.types.Panel):
+class BLOSM_PT_MaterialCreate(bpy.types.Panel):
     bl_label = "Material Utilities"
     bl_space_type = "NODE_EDITOR"
     bl_region_type = "UI" if _isBlender280 else "TOOLS"
@@ -481,12 +481,12 @@ class PanelMaterialCreate(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        addon = context.scene.blender_osm
+        addon = context.scene.blosm
         return app.has(Keys.mode3dRealistic) and addon.dataType == "osm"\
             and addon.mode == "3Drealistic"
     
     def draw(self, context):
-        addon = context.scene.blender_osm
+        addon = context.scene.blosm
         layout = self.layout
         
         box = layout.box()
@@ -512,9 +512,9 @@ class PanelMaterialCreate(bpy.types.Panel):
         
 
 _classes = (
-    OperatorCreateMaterials,
-    OperatorDeleteMaterials,
-    PanelMaterialCreate
+    BLOSM_OT_CreateMaterials,
+    BLOSM_OT_DeleteMaterials,
+    BLOSM_PT_MaterialCreate
 )
 
 def register():

@@ -20,9 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 bl_info = {
     "name": "blender-osm",
     "author": "Vladimir Elistratov <prokitektura+support@gmail.com>",
-    "version": (2, 4, 21),
+    "version": (2, 4, 22),
     "blender": (2, 80, 0),
-    "location": "Right side panel for Blender 2.8x (left side panel for Blender 2.79))> \"osm\" tab",
+    "location": "Right side panel > \"osm\" tab",
     "description": "One click download and import of OpenStreetMap, terrain, satellite imagery, web maps",
     "warning": "",
     "wiki_url": "https://github.com/vvoovv/blender-osm/wiki/Premium-Version",
@@ -74,25 +74,25 @@ _isBlender280 = bpy.app.version[1] >= 80
 class BlenderOsmPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
     
-    dataDir = bpy.props.StringProperty(
+    dataDir: bpy.props.StringProperty(
         name = '',
         subtype = 'DIR_PATH',
         description = "Directory to store downloaded OpenStreetMap and terrain files"
     )
     
-    assetsDir = bpy.props.StringProperty(
+    assetsDir: bpy.props.StringProperty(
         name = '',
         subtype = 'DIR_PATH',
         description = "Directory with assets (building_materials.blend, vegetation.blend). "+
             "It can be also set in the addon GUI"
     )
     
-    mapboxAccessToken = bpy.props.StringProperty(
+    mapboxAccessToken: bpy.props.StringProperty(
         name = "Mapbox access token",
         description = "A string token to access overlays from Mapbox company"
     )
     
-    osmServer = bpy.props.EnumProperty(
+    osmServer: bpy.props.EnumProperty(
         name = "OSM data server",
         items = (
             ("overpass-api.de", "overpass-api.de: 8 cores, 128 GB RAM", "overpass-api.de: 8 cores, 96 GB RAM"),
@@ -103,7 +103,7 @@ class BlenderOsmPreferences(bpy.types.AddonPreferences):
         default = "overpass-api.de"
     )
     
-    enableExperimentalFeatures = bpy.props.BoolProperty(
+    enableExperimentalFeatures: bpy.props.BoolProperty(
         name = "Enable export (experimental)",
         description = "Enable export to the popular 3D formats. Experimental feature! Use it with caution!",
         default = False
@@ -134,12 +134,12 @@ class BlenderOsmPreferences(bpy.types.AddonPreferences):
         #layout.operator("blosm.load_extensions", text="Load extensions")
         layout.prop(self, "osmServer")
         
-        layout.box().prop(self, "enableExperimentalFeatures", text="Enable experimental features")
+        layout.prop(self, "enableExperimentalFeatures", text="Enable experimental features")
 
 app.app.addonName = BlenderOsmPreferences.bl_idname
 
 
-class OperatorGetMapboxToken(bpy.types.Operator):
+class BLOSM_OT_GetMapboxToken(bpy.types.Operator):
     bl_idname = "blosm.get_mapbox_token"
     bl_label = ""
     bl_description = "Get Mapbox access token"
@@ -152,8 +152,8 @@ class OperatorGetMapboxToken(bpy.types.Operator):
         webbrowser.open_new_tab(self.url)
         return {'FINISHED'}
 
-
-class OperatorLoadExtensions(bpy.types.Operator):
+"""
+class BLOSM_OT_LoadExtensions(bpy.types.Operator):
     bl_idname = "blosm.load_extensions"
     bl_label = ""
     bl_description = "Scan Blender addons, find extensions for blender-osm and load them"
@@ -166,18 +166,19 @@ class OperatorLoadExtensions(bpy.types.Operator):
             ("Loaded 1 extension" if numExtensions==1 else "Loaded %s extensions" % numExtensions)
         )
         return {'FINISHED'}
+"""
 
 
-class OperatorImportData(bpy.types.Operator):
+class BLOSM_OT_ImportData(bpy.types.Operator):
     """Import data: OpenStreetMap or terrain"""
-    bl_idname = "blender_osm.import_data"  # important since its how bpy.ops.blender_osm.import_data is constructed
+    bl_idname = "blosm.import_data"  # important since its how bpy.ops.blosm.import_data is constructed
     bl_label = "blender-osm"
     bl_description = "Import data of the selected type (OpenStreetMap or terrain)"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         a = app.app
-        dataType = context.scene.blender_osm.dataType
+        dataType = context.scene.blosm.dataType
         
         a.projection = None
         a.setAttributes(context)
@@ -197,7 +198,7 @@ class OperatorImportData(bpy.types.Operator):
     
     def importOsm(self, context):
         a = app.app
-        addon = context.scene.blender_osm
+        addon = context.scene.blosm
         
         try:
             a.initOsm(self, context)
@@ -356,7 +357,7 @@ class OperatorImportData(bpy.types.Operator):
             self.report({'ERROR'}, str(e))
             return {'CANCELLED'}
         
-        terrainObject = context.scene.objects.get(context.scene.blender_osm.terrainObject)
+        terrainObject = context.scene.objects.get(context.scene.blosm.terrainObject)
         
         minLon, minLat, maxLon, maxLat = a.getExtentFromObject(terrainObject, context)\
             if terrainObject else\
@@ -364,7 +365,7 @@ class OperatorImportData(bpy.types.Operator):
         
         a.overlay.prepareImport(minLon, minLat, maxLon, maxLat)
         
-        bpy.ops.blender_osm.control_overlay()
+        bpy.ops.blosm.control_overlay()
         
         # set the custom parameters <lat> and <lon> to the active scene
         if setLatLon:
@@ -417,7 +418,7 @@ class OperatorImportData(bpy.types.Operator):
         from parse.geojson import GeoJson
         
         a = app.app
-        addon = context.scene.blender_osm
+        addon = context.scene.blosm
         
         try:
             a.initGeoJson(self, context)
@@ -508,8 +509,8 @@ class OperatorImportData(bpy.types.Operator):
                 scene.objects.active.select = False
 
 
-class OperatorControlOverlay(bpy.types.Operator):
-    bl_idname = "blender_osm.control_overlay"
+class BLOSM_OT_ControlOverlay(bpy.types.Operator):
+    bl_idname = "blosm.control_overlay"
     bl_label = ""
     bl_description = "Control overlay import and display progress in the 3D View"
     bl_options = {'INTERNAL'}
@@ -584,10 +585,10 @@ class OperatorControlOverlay(bpy.types.Operator):
 
 _classes = (
     BlenderOsmPreferences,
-    OperatorGetMapboxToken,
-    OperatorLoadExtensions,
-    OperatorImportData,
-    OperatorControlOverlay
+    BLOSM_OT_GetMapboxToken,
+    #BLOSM_OT_LoadExtensions,
+    BLOSM_OT_ImportData,
+    BLOSM_OT_ControlOverlay
 )
 
 def register():

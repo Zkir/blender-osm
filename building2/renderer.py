@@ -74,9 +74,12 @@ class Building:
         # by its outline
         self.footprint = None
         self._cache.clear()
-        self.metaStyleBlock = None
         self.assetInfoBldgIndex = None
         self._area = 0.
+        
+        # attributes from @meta of the style block
+        self.buildingUse = None
+        self.classifyFacades = 1
     
     def clone(self):
         building = Building()
@@ -100,8 +103,8 @@ class Building:
     
     def setStyleMeta(self, style):
         if style.meta:
-            self.metaStyleBlock = style.meta
-        self.use = style.meta.attrs.get("buildingUse") if style.meta else None
+            for attr in style.meta.attrs:
+                setattr(self, attr, style.meta.attrs[attr])
     
     def area(self):
         if not self._area:
@@ -125,8 +128,6 @@ class Building:
 
 class BuildingRendererNew(Renderer):
     
-    assetInfoFilename = "default.json"
-    
     def __init__(self, app, styleStore, itemRenderers, getStyle=None):
         self.app = app
         app.addRenderer(self)
@@ -137,24 +138,17 @@ class BuildingRendererNew(Renderer):
         self.styleStore = styleStore
         
         self.assetsDir = app.assetsDir
+        self.assetPackageDir = app.assetPackageDir
         
         # do wee need to apply a cladding color for facade textures?
         self.useCladdingColor = True
         
-        # do we need export materials?
-        exportMaterials = False
-        
         self.itemRenderers = itemRenderers
-        # check if need to export materials
-        for item in itemRenderers:
-            # If at least one item renderer creates materials for export,
-            # then we set <self.exportMaterial> (i.e. for the global renderer) to <True>
-            if not exportMaterials and itemRenderers[item].exportMaterials:
-                exportMaterials = True
         
-        self.exportMaterials = exportMaterials
-        if exportMaterials:
-            self.textureExporter = TextureExporter(self.assetsDir)
+        self.exportMaterials = app.enableExperimentalFeatures and app.importForExport
+        
+        if self.exportMaterials:
+            self.textureExporter = TextureExporter(self.assetsDir, self.assetPackageDir)
             # Do we need to cache <claddingTextureInfo> for each cladding material?
             self.cacheCladdingTextureInfo = False
         
@@ -167,15 +161,7 @@ class BuildingRendererNew(Renderer):
         self.itemStore = ItemStore(referenceItems)
         self.itemFactory = ItemFactory(referenceItems)
         
-        assetInfoFilepath = app.assetInfoFilepath
-        if not assetInfoFilepath:
-            assetInfoFilepath = "%s_256.json" % self.assetInfoFilename[:-5] if exportMaterials else self.assetInfoFilename
-            assetInfoFilepath = os.path.join(
-                os.path.dirname(os.path.abspath(app.bldgMaterialsFilepath)),
-                "asset_info",
-                assetInfoFilepath
-            )
-        self.assetStore = AssetStore(assetInfoFilepath)
+        self.assetStore = AssetStore(app.assetInfoFilepath)
         
         self._cache = {}
     
